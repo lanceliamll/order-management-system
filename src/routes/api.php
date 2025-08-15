@@ -1,25 +1,29 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-
-Route::get('/', function () {
-    return Inertia::render('welcome');
-})->name('home');
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
-});
-
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
-
-// Direct product routes for testing (without API prefix)
 use App\Http\Controllers\Api\ProductController;
 
-Route::prefix('products')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group. Enjoy building your API!
+|
+*/
+
+// API Routes for authenticated users
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+// Product API Routes - Using the 'api' middleware group
+Route::prefix('products')
+    ->middleware('api') // Apply the API middleware group which disables CSRF protection
+    ->group(function () {
         // Inventory specific endpoints - these need to come BEFORE the dynamic routes
         Route::get('inventory/all', [ProductController::class, 'inventory']);
         Route::get('inventory/low-stock', [ProductController::class, 'lowStock']);
