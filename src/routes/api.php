@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,4 +38,17 @@ Route::prefix('products')
         Route::get('{id}', [ProductController::class, 'show']);
         Route::put('{id}', [ProductController::class, 'update']);
         Route::delete('{id}', [ProductController::class, 'destroy']);
+    });
+
+// Order API Routes - Using the 'api' middleware group
+Route::prefix('orders')
+    ->middleware('api')
+    ->group(function () {
+        // Order endpoints
+        Route::get('/', [OrderController::class, 'index']);
+        Route::post('/', [OrderController::class, 'store']);
+        Route::get('{id}', [OrderController::class, 'show']);
+        Route::put('{id}/confirm', [OrderController::class, 'confirm']);
+        Route::put('{id}/cancel', [OrderController::class, 'cancel']);
+        Route::put('{id}/cancel-items', [OrderController::class, 'cancelItems']);
     });
