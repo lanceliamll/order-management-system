@@ -21,6 +21,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+use App\Http\Controllers\Api\ReportController;
+
 // Product API Routes - Using the 'api' middleware group
 Route::prefix('products')
     ->middleware('api') // Apply the API middleware group which disables CSRF protection
@@ -35,6 +37,7 @@ Route::prefix('products')
         
         // Routes with dynamic parameters come last
         Route::put('{id}/stock', [ProductController::class, 'updateStock']);
+        Route::get('{id}/inventory-logs', [ProductController::class, 'inventoryLogs']);
         Route::get('{id}', [ProductController::class, 'show']);
         Route::put('{id}', [ProductController::class, 'update']);
         Route::delete('{id}', [ProductController::class, 'destroy']);
@@ -48,7 +51,18 @@ Route::prefix('orders')
         Route::get('/', [OrderController::class, 'index']);
         Route::post('/', [OrderController::class, 'store']);
         Route::get('{id}', [OrderController::class, 'show']);
+        Route::get('{id}/activity', [OrderController::class, 'activity']);
         Route::put('{id}/confirm', [OrderController::class, 'confirm']);
         Route::put('{id}/cancel', [OrderController::class, 'cancel']);
         Route::put('{id}/cancel-items', [OrderController::class, 'cancelItems']);
+    });
+    
+// Reporting API Routes
+Route::prefix('reports')
+    ->middleware('api')
+    ->group(function () {
+        Route::get('orders/summary', [ReportController::class, 'orderSummary']);
+        Route::get('inventory/status', [ReportController::class, 'inventoryStatus']);
+        Route::get('revenue', [ReportController::class, 'revenueReport']);
+        Route::get('activities', [ReportController::class, 'activityTimeline']);
     });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\InventoryLog;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -164,10 +165,16 @@ class ProductController extends Controller
 
         $validatedData = $request->validate([
             'stock_quantity' => 'required|integer|min:0',
+            'reason' => 'nullable|string'
         ]);
 
-        $product->stock_quantity = $validatedData['stock_quantity'];
-        $product->save();
+        $oldQuantity = $product->stock_quantity;
+        $newQuantity = $validatedData['stock_quantity'];
+        $quantityChange = $newQuantity - $oldQuantity;
+        $reason = $validatedData['reason'] ?? 'Manual inventory update';
+        
+        // Update the stock and log the change
+        $product->updateStock($quantityChange, $reason);
 
         return response()->json([
             'success' => true,
@@ -180,6 +187,51 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Get inventory logs for a specific product.
+     * 
+     * This endpoint retrieves the complete history of inventory changes for a product,
+     * including stock increases, decreases, and adjustments. Each log entry contains
+     * details about:
+     * - Type of change (increase/decrease)
+     * - Quantity changed
+     * - Reason for the change (order, manual adjustment, etc.)
+     * - Timestamp of the change
+     * 
+     * This provides full traceability of inventory movements for audit and
+     * reconciliation purposes.
+     *
+     * @param  int  $id  The product ID to retrieve inventory logs for
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function inventoryLogs($id): JsonResponse
+    {
+        $product = Product::find($id);
+        
+        if (!$product) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found',
+            ], 404);
+        }
+        
+        $logs = InventoryLog::where('product_id', $id)
+            ->latest('created_at')
+            ->get();
+            
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'product' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'current_stock' => $product->stock_quantity
+                ],
+                'logs' => $logs
+            ],
+        ]);
+    }
+    
     /**
      * List products with low stock (below a specified threshold).
      *

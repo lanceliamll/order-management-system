@@ -1,16 +1,30 @@
-# Products API Documentation
+# Order Management System API Documentation
 
-This directory contains documentation for the Products API in the Order Management System.
+This directory contains documentation for the APIs in the Order Management System.
 
 ## Available Documentation
 
 1. [**Products API: Complete Documentation**](products-api.md)  
    Comprehensive documentation of all Products API endpoints, request/response formats, and usage examples.
 
-2. [**Quick Start Guide**](products-api-quickstart.md)  
+2. [**Orders API: Complete Documentation**](orders-api.md)  
+   Comprehensive documentation of all Orders API endpoints, request/response formats, and usage examples.
+
+3. [**Reports API: Complete Documentation**](reports-api.md)  
+   Comprehensive documentation of all reporting and logging endpoints for business intelligence.
+
+4. [**Products API: Quick Start Guide**](products-api-quickstart.md)  
    A simplified guide to get started with the Products API quickly.
 
-3. [**Postman Collection**](products-api-postman-collection.json)  
+5. [**Orders API: Quick Start Guide**](orders-api-quickstart.md)  
+   A simplified guide to get started with the Orders API quickly.
+
+6. [**Reports API: Quick Start Guide**](reports-api-quickstart.md)  
+   A simplified guide to get started with the Reports and Logging API quickly.
+
+7. [**Postman Collections**]
+   - [Products API Collection](products-api-postman-collection.json) - For testing the Products API endpoints
+   - [Reports API Collection](reports-api-postman-collection.json) - For testing the Reports API endpoints
    A ready-to-use Postman collection for testing the Products API.
 
 ## How to Use the Postman Collection
@@ -22,11 +36,20 @@ This directory contains documentation for the Products API in the Order Manageme
 
 ## API Structure
 
-The Products API has two main sections:
+The Order Management System API is organized into three main sections:
 
-1. **Products Management**: Standard CRUD operations for products
-2. **Inventory Management**: Specialized endpoints for inventory operations
+1. **Products Management**: CRUD operations for products and inventory management
+2. **Orders Management**: Order creation, confirmation, cancellation, and item management
+3. **Reporting & Logging**: Business intelligence reports and activity logging
+
+## Key Features
+
+- Product inventory tracking with automatic stock updates
+- Order processing with status tracking
+- Full and partial order cancellation with inventory restoration
+- Comprehensive activity logging for orders and inventory
+- Business intelligence reporting for orders, inventory, and revenue
 
 ## Need Help?
 
-If you need additional help or have questions about the Products API, please refer to the complete documentation or contact the development team.
+If you need additional help or have questions about the API, please refer to the complete documentation or contact the development team.

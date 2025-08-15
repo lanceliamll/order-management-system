@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateOrderRequest;
+use App\Models\InventoryLog;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderLog;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,6 +72,16 @@ class OrderController extends Controller
                 
                 // Update order total
                 $order->update(['total_amount' => $totalAmount]);
+                
+                // Log order creation
+                OrderLog::log(
+                    $order->id,
+                    OrderLog::ACTIVITY_CREATED,
+                    [
+                        'total_amount' => $totalAmount,
+                        'items_count' => count($request->products)
+                    ]
+                );
                 
                 return response()->json([
                     'status' => 'success',
@@ -143,14 +155,22 @@ class OrderController extends Controller
                         ]);
                     }
                     
-                    // Update product stock
-                    $product->stock_quantity -= $item->quantity;
-                    $product->save();
+                    // Update and log product stock reduction
+                    $product->updateStock(-$item->quantity, InventoryLog::REASON_ORDER_CONFIRMED);
                 }
                 
                 // Update order status
                 $order->status = 'confirmed';
                 $order->save();
+                
+                // Log order confirmation
+                OrderLog::log(
+                    $order->id,
+                    OrderLog::ACTIVITY_CONFIRMED,
+                    [
+                        'total_amount' => $order->total_amount
+                    ]
+                );
                 
                 return response()->json([
                     'status' => 'success',
@@ -200,10 +220,9 @@ class OrderController extends Controller
                         $quantityToRestore = $item->quantity - $item->cancelled_quantity;
                         
                         if ($quantityToRestore > 0) {
-                            // Restore inventory
+                            // Restore inventory and log it
                             $product = $item->product;
-                            $product->stock_quantity += $quantityToRestore;
-                            $product->save();
+                            $product->updateStock($quantityToRestore, InventoryLog::REASON_ORDER_CANCELLED);
                             
                             // Mark item as fully cancelled
                             $item->cancelled_quantity = $item->quantity;
@@ -223,6 +242,16 @@ class OrderController extends Controller
                 $order->total_amount = 0; // Zero out the total since everything is cancelled
                 $order->save();
                 
+                // Log order cancellation
+                OrderLog::log(
+                    $order->id,
+                    OrderLog::ACTIVITY_CANCELLED,
+                    [
+                        'previous_total' => $order->getOriginal('total_amount'),
+                        'new_total' => 0
+                    ]
+                );
+                
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Order cancelled successfully and inventory restored',
@@ -238,6 +267,23 @@ class OrderController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+    
+    /**
+     * Cancel specific items in an order (partial cancellation).
+     */
+    /**
+     * Get activity logs for an order.
+     */
+    public function activity(string $id): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+        $logs = $order->logs()->with('order')->latest()->get();
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => $logs
+        ]);
     }
     
     /**
@@ -291,8 +337,7 @@ class OrderController extends Controller
                     // If this is a confirmed order, restore inventory
                     if ($order->status === 'confirmed') {
                         $product = $orderItem->product;
-                        $product->stock_quantity += $quantityToCancel;
-                        $product->save();
+                        $product->updateStock($quantityToCancel, InventoryLog::REASON_ORDER_CANCELLED);
                     }
                     
                     // Check if any items are not fully cancelled
@@ -330,6 +375,16 @@ class OrderController extends Controller
                 
                 $order->save();
                 
+                // Log order cancellation (full or partial)
+                OrderLog::log(
+                    $order->id,
+                    $allItemsCancelled ? OrderLog::ACTIVITY_CANCELLED : OrderLog::ACTIVITY_PARTIALLY_CANCELLED,
+                    [
+                        'items_cancelled' => $request->items,
+                        'new_total' => $newTotal
+                    ]
+                );
+                
                 return response()->json([
                     'status' => 'success',
                     'message' => $allItemsCancelled ? 
@@ -347,5 +402,49 @@ class OrderController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+    
+    /**
+     * Get activity logs for a specific order.
+     * 
+     * This endpoint retrieves a chronological history of all actions performed on an order,
+     * including order creation, confirmation, cancellation, and item changes.
+     * Each log entry includes details about the action, timestamp, and associated metadata.
+     * 
+     * This is useful for:
+     * - Troubleshooting order issues
+     * - Auditing order changes
+     * - Providing detailed order history to customers or support staff
+     *
+     * @param  int  $id  The order ID to retrieve activity logs for
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function activity($id): JsonResponse
+    {
+        $order = Order::find($id);
+        
+        if (!$order) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Order not found'
+            ], 404);
+        }
+        
+        $logs = OrderLog::where('order_id', $id)
+            ->latest('created_at')
+            ->get();
+            
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'order' => [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $order->status,
+                    'total_amount' => $order->total_amount
+                ],
+                'logs' => $logs
+            ]
+        ]);
     }
 }

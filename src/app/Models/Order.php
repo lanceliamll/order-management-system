@@ -37,6 +37,14 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+    
+    /**
+     * Get the activity logs for the order.
+     */
+    public function logs(): HasMany
+    {
+        return $this->hasMany(OrderLog::class);
+    }
 
     /**
      * Generate a unique order number.

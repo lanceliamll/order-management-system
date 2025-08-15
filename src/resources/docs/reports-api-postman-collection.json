@@ -1,0 +1,294 @@
+{
+  "info": {
+    "_postman_id": "7a5e3f41-b980-4f23-abcd-21c8e7f86542",
+    "name": "Order Management System - Reports API",
+    "description": "This collection contains requests for the reporting and logging endpoints of the Order Management System API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Order Summary Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/orders/summary?from_date=2025-01-01&to_date=2025-08-16",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "orders", "summary"],
+              "query": [
+                {
+                  "key": "from_date",
+                  "value": "2025-01-01",
+                  "description": "Filter from this date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "to_date",
+                  "value": "2025-08-16",
+                  "description": "Filter to this date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get a summary of orders, including counts and totals by status, and recent orders."
+          },
+          "response": []
+        },
+        {
+          "name": "Inventory Status Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/inventory/status",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "inventory", "status"]
+            },
+            "description": "Get current inventory status, including low stock items and recent inventory activities."
+          },
+          "response": []
+        },
+        {
+          "name": "Revenue Report (Monthly)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/revenue?period=monthly&year=2025",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "revenue"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "monthly",
+                  "description": "Grouping period: 'daily' or 'monthly'"
+                },
+                {
+                  "key": "year",
+                  "value": "2025",
+                  "description": "Year to analyze (YYYY)"
+                }
+              ]
+            },
+            "description": "Get monthly revenue calculations for a specific year."
+          },
+          "response": []
+        },
+        {
+          "name": "Revenue Report (Daily)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/revenue?period=daily&year=2025&month=8",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "revenue"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "daily",
+                  "description": "Grouping period: 'daily' or 'monthly'"
+                },
+                {
+                  "key": "year",
+                  "value": "2025",
+                  "description": "Year to analyze (YYYY)"
+                },
+                {
+                  "key": "month",
+                  "value": "8",
+                  "description": "Month to analyze (1-12)"
+                }
+              ]
+            },
+            "description": "Get daily revenue calculations for a specific month."
+          },
+          "response": []
+        },
+        {
+          "name": "Activity Timeline (Orders)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/activities?type=order&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "activities"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "order",
+                  "description": "Activity type: 'order' or 'inventory'"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Maximum number of results"
+                }
+              ]
+            },
+            "description": "Get a timeline of order activities."
+          },
+          "response": []
+        },
+        {
+          "name": "Activity Timeline (Inventory)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/activities?type=inventory&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "activities"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "inventory",
+                  "description": "Activity type: 'order' or 'inventory'"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Maximum number of results"
+                }
+              ]
+            },
+            "description": "Get a timeline of inventory activities."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for retrieving various business intelligence reports."
+    },
+    {
+      "name": "Item Logs",
+      "item": [
+        {
+          "name": "Product Inventory Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/1/inventory-logs",
+              "host": ["{{base_url}}"],
+              "path": ["products", "1", "inventory-logs"]
+            },
+            "description": "Get inventory change logs for a specific product."
+          },
+          "response": []
+        },
+        {
+          "name": "Order Activity Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/1/activity",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "1", "activity"]
+            },
+            "description": "Get activity logs for a specific order."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for retrieving logs for specific products or orders."
+    }
+  ]
+}
