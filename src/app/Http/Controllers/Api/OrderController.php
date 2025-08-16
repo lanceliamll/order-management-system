@@ -457,7 +457,6 @@ class OrderController extends Controller
                         
                         $product->updateStock($quantityToCancel, InventoryLog::REASON_ORDER_CANCELLED);
                     }
-                    }
                     
                     // Check if any items are not fully cancelled
                     if ($orderItem->cancelled_quantity < $orderItem->quantity) {
