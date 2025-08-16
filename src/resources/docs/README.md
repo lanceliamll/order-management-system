@@ -22,10 +22,12 @@ This directory contains documentation for the APIs in the Order Management Syste
 6. [**Reports API: Quick Start Guide**](reports-api-quickstart.md)  
    A simplified guide to get started with the Reports and Logging API quickly.
 
-7. [**Postman Collections**]
+7. [**Order Management Best Practices**](order-management-best-practices.md)  
+   Guidelines for inventory management, error handling, concurrency, and security best practices.
+
+8. [**Postman Collections**]
    - [Products API Collection](products-api-postman-collection.json) - For testing the Products API endpoints
    - [Reports API Collection](reports-api-postman-collection.json) - For testing the Reports API endpoints
-   A ready-to-use Postman collection for testing the Products API.
 
 ## How to Use the Postman Collection
 

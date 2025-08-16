@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CancelOrderItemsRequest;
 use App\Http\Requests\CreateOrderRequest;
 use App\Models\InventoryLog;
 use App\Models\Order;
@@ -14,10 +15,27 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * OrderController
+ * 
+ * Handles all API endpoints related to order management including:
+ * - Order listing and retrieval
+ * - Order creation
+ * - Order confirmation (with inventory deduction)
+ * - Order cancellation (full and partial with inventory restoration)
+ * - Order activity logging
+ * 
+ * All operations that modify data are wrapped in database transactions
+ * to ensure data integrity, especially for inventory-related operations.
+ */
 class OrderController extends Controller
 {
     /**
      * Display a listing of the orders.
+     * 
+     * Retrieves a list of all orders with their items, sorted by most recent first.
+     * 
+     * @return \Illuminate\Http\JsonResponse
      */
     public function index(): JsonResponse
     {
@@ -31,12 +49,44 @@ class OrderController extends Controller
 
     /**
      * Store a newly created order in storage.
+     * 
+     * Creates a new order with the provided products. The method:
+     * - Validates product availability and quantities
+     * - Creates the order with a unique order number
+     * - Creates order items with current product prices
+     * - Calculates the total order amount
+     * - Logs the order creation activity
+     * 
+     * This method uses database transactions to ensure data integrity.
      */
     public function store(CreateOrderRequest $request): JsonResponse
     {
         try {
             // Use a transaction to ensure data integrity
             return DB::transaction(function () use ($request) {
+                // Validate all products exist and have enough stock before creating anything
+                foreach ($request->products as $item) {
+                    $product = Product::find($item['product_id']);
+                    
+                    if (!$product) {
+                        throw ValidationException::withMessages([
+                            'products' => ["Product with ID {$item['product_id']} not found"]
+                        ]);
+                    }
+                    
+                    if ($item['quantity'] <= 0) {
+                        throw ValidationException::withMessages([
+                            'products' => ["Quantity must be greater than zero for product: {$product->name}"]
+                        ]);
+                    }
+                    
+                    if ($product->stock_quantity < $item['quantity']) {
+                        throw ValidationException::withMessages([
+                            'products' => ["Not enough stock for product: {$product->name}. Available: {$product->stock_quantity}"]
+                        ]);
+                    }
+                }
+                
                 // Create a new order
                 $order = Order::create([
                     'order_number' => Order::generateOrderNumber(),
@@ -48,12 +98,12 @@ class OrderController extends Controller
                 
                 // Add order items
                 foreach ($request->products as $item) {
-                    $product = Product::findOrFail($item['product_id']);
+                    $product = Product::lockForUpdate()->findOrFail($item['product_id']);
                     
-                    // Check if enough stock is available
+                    // Double-check stock after lock
                     if ($product->stock_quantity < $item['quantity']) {
                         throw ValidationException::withMessages([
-                            'products' => ["Not enough stock for product: {$product->name}"]
+                            'products' => ["Stock changed during checkout for: {$product->name}"]
                         ]);
                     }
                     
@@ -62,6 +112,7 @@ class OrderController extends Controller
                         'product_id' => $product->id,
                         'quantity' => $item['quantity'],
                         'unit_price' => $product->price,
+                        'cancelled_quantity' => 0,
                     ]);
                     
                     $order->orderItems()->save($orderItem);
@@ -108,6 +159,12 @@ class OrderController extends Controller
 
     /**
      * Display the specified order.
+     * 
+     * Retrieves a single order by ID with all its items and related product details.
+     * 
+     * @param  string  $id  The order ID to retrieve
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException  When order not found
      */
     public function show(string $id): JsonResponse
     {
@@ -121,6 +178,18 @@ class OrderController extends Controller
 
     /**
      * Confirm an order and deduct inventory.
+     * 
+     * Changes order status from 'pending' to 'confirmed' and deducts product inventory.
+     * This method:
+     * - Verifies the order can be confirmed (not already confirmed or cancelled)
+     * - Checks sufficient inventory for all items
+     * - Deducts inventory with proper locking to prevent race conditions
+     * - Logs inventory changes and order confirmation
+     * 
+     * Uses database transactions to ensure data integrity during confirmation.
+     * 
+     * @param  string  $id  The order ID to confirm
+     * @return \Illuminate\Http\JsonResponse
      */
     public function confirm(string $id): JsonResponse
     {
@@ -155,8 +224,20 @@ class OrderController extends Controller
                         ]);
                     }
                     
+                    // Lock the product row for update to prevent concurrent inventory issues
+                    $freshProduct = Product::where('id', $product->id)
+                        ->lockForUpdate()
+                        ->first();
+                    
+                    // Double check stock after lock to ensure it hasn't changed
+                    if ($freshProduct->stock_quantity < $item->quantity) {
+                        throw ValidationException::withMessages([
+                            'inventory' => ["Stock level changed during checkout for: {$product->name}"]
+                        ]);
+                    }
+                    
                     // Update and log product stock reduction
-                    $product->updateStock(-$item->quantity, InventoryLog::REASON_ORDER_CONFIRMED);
+                    $freshProduct->updateStock(-$item->quantity, InventoryLog::REASON_ORDER_CONFIRMED);
                 }
                 
                 // Update order status
@@ -197,6 +278,13 @@ class OrderController extends Controller
 
     /**
      * Cancel an entire order.
+     * 
+     * Cancels an entire order and restores inventory if needed.
+     * This method handles both pending and confirmed orders differently:
+     * - For pending orders: Simply marks all items as cancelled
+     * - For confirmed orders: Restores inventory and marks items as cancelled
+     * 
+     * Uses database transactions to ensure data integrity during the cancellation process.
      */
     public function cancel(string $id): JsonResponse
     {
@@ -220,8 +308,16 @@ class OrderController extends Controller
                         $quantityToRestore = $item->quantity - $item->cancelled_quantity;
                         
                         if ($quantityToRestore > 0) {
+                            // Lock the product row for update to prevent concurrent inventory issues
+                            $product = Product::where('id', $item->product_id)
+                                ->lockForUpdate()
+                                ->first();
+                                
+                            if (!$product) {
+                                throw new \Exception("Product with ID {$item->product_id} not found during cancellation");
+                            }
+                            
                             // Restore inventory and log it
-                            $product = $item->product;
                             $product->updateStock($quantityToRestore, InventoryLog::REASON_ORDER_CANCELLED);
                             
                             // Mark item as fully cancelled
@@ -271,32 +367,23 @@ class OrderController extends Controller
     
     /**
      * Cancel specific items in an order (partial cancellation).
+     * 
+     * Handles partial cancellation of specific items in an order. This method:
+     * - Validates the requested items and quantities
+     * - Updates the cancelled_quantity for each item
+     * - Restores inventory for confirmed orders
+     * - Updates the order status based on cancellation (partially_cancelled or cancelled)
+     * - Recalculates the order total based on active (non-cancelled) items
+     * - Logs the cancellation activity
+     * 
+     * Uses database transactions to ensure data integrity during the cancellation process.
+     * 
+     * @param  \App\Http\Requests\CancelOrderItemsRequest  $request  The validated cancellation request
+     * @param  string  $id  The order ID to cancel items for
+     * @return \Illuminate\Http\JsonResponse
      */
-    /**
-     * Get activity logs for an order.
-     */
-    public function activity(string $id): JsonResponse
+    public function cancelItems(CancelOrderItemsRequest $request, string $id): JsonResponse
     {
-        $order = Order::findOrFail($id);
-        $logs = $order->logs()->with('order')->latest()->get();
-        
-        return response()->json([
-            'status' => 'success',
-            'data' => $logs
-        ]);
-    }
-    
-    /**
-     * Cancel specific items in an order (partial cancellation).
-     */
-    public function cancelItems(Request $request, string $id): JsonResponse
-    {
-        $request->validate([
-            'items' => 'required|array',
-            'items.*.order_item_id' => 'required|exists:order_items,id',
-            'items.*.quantity' => 'required|integer|min:1',
-        ]);
-        
         try {
             return DB::transaction(function () use ($request, $id) {
                 $order = Order::with('orderItems.product')->findOrFail($id);
@@ -309,16 +396,32 @@ class OrderController extends Controller
                     ], 422);
                 }
                 
-                $allItemsCancelled = true;
-                $someItemsCancelled = false;
-                
-                // Process each item for cancellation
+                // Validate all items before making any changes
                 foreach ($request->items as $cancelItem) {
                     $orderItem = $order->orderItems->firstWhere('id', $cancelItem['order_item_id']);
                     
                     if (!$orderItem) {
-                        continue; // Skip if item not found
+                        throw ValidationException::withMessages([
+                            'items' => ["Order item with ID {$cancelItem['order_item_id']} not found in this order"]
+                        ]);
                     }
+                    
+                    // Check if the quantity to cancel is valid
+                    $maxCancellable = $orderItem->quantity - $orderItem->cancelled_quantity;
+                    if ($cancelItem['quantity'] > $maxCancellable) {
+                        throw ValidationException::withMessages([
+                            'items' => ["Cannot cancel {$cancelItem['quantity']} units for item {$orderItem->id}. Maximum cancellable: {$maxCancellable}"]
+                        ]);
+                    }
+                }
+                
+                $allItemsCancelled = true;
+                $someItemsCancelled = false;
+                $cancelledItems = [];
+                
+                // Process each item for cancellation
+                foreach ($request->items as $cancelItem) {
+                    $orderItem = $order->orderItems->firstWhere('id', $cancelItem['order_item_id']);
                     
                     // Calculate how many more can be cancelled
                     $maxCancellable = $orderItem->quantity - $orderItem->cancelled_quantity;
@@ -333,11 +436,27 @@ class OrderController extends Controller
                     $orderItem->save();
                     
                     $someItemsCancelled = true;
+                    $cancelledItems[] = [
+                        'item_id' => $orderItem->id,
+                        'product_id' => $orderItem->product_id,
+                        'product_name' => $orderItem->product->name,
+                        'quantity_cancelled' => $quantityToCancel,
+                        'remaining_active' => $orderItem->quantity - $orderItem->cancelled_quantity
+                    ];
                     
                     // If this is a confirmed order, restore inventory
                     if ($order->status === 'confirmed') {
-                        $product = $orderItem->product;
+                        // Lock the product row for update to prevent concurrent inventory issues
+                        $product = Product::where('id', $orderItem->product_id)
+                            ->lockForUpdate()
+                            ->first();
+                            
+                        if (!$product) {
+                            throw new \Exception("Product with ID {$orderItem->product_id} not found during cancellation");
+                        }
+                        
                         $product->updateStock($quantityToCancel, InventoryLog::REASON_ORDER_CANCELLED);
+                    }
                     }
                     
                     // Check if any items are not fully cancelled
@@ -375,35 +494,42 @@ class OrderController extends Controller
                 
                 $order->save();
                 
-                // Log order cancellation (full or partial)
-                OrderLog::log(
-                    $order->id,
-                    $allItemsCancelled ? OrderLog::ACTIVITY_CANCELLED : OrderLog::ACTIVITY_PARTIALLY_CANCELLED,
-                    [
-                        'items_cancelled' => $request->items,
-                        'new_total' => $newTotal
-                    ]
-                );
-                
+                    // Log order cancellation (full or partial)
+                    OrderLog::log(
+                        $order->id,
+                        $allItemsCancelled ? OrderLog::ACTIVITY_CANCELLED : OrderLog::ACTIVITY_PARTIALLY_CANCELLED,
+                        [
+                            'items_cancelled' => $cancelledItems,
+                            'previous_total' => $order->getOriginal('total_amount'),
+                            'new_total' => $newTotal
+                        ]
+                    );
+                    
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => $allItemsCancelled ? 
+                            'All items cancelled and order marked as cancelled' : 
+                            'Items partially cancelled and inventory restored',
+                        'data' => [
+                            'order' => $order->fresh('orderItems.product')
+                        ]
+                    ]);
+                });
+            } catch (ValidationException $e) {
                 return response()->json([
-                    'status' => 'success',
-                    'message' => $allItemsCancelled ? 
-                        'All items cancelled and order marked as cancelled' : 
-                        'Items partially cancelled and inventory restored',
-                    'data' => [
-                        'order' => $order->fresh('orderItems.product')
-                    ]
-                ]);
-            });
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Item cancellation failed',
-                'error' => $e->getMessage()
-            ], 500);
+                    'status' => 'error',
+                    'message' => 'Validation error during cancellation',
+                    'errors' => $e->errors()
+                ], 422);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Item cancellation failed',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
         }
-    }
-    
+        
     /**
      * Get activity logs for a specific order.
      * 
@@ -432,9 +558,7 @@ class OrderController extends Controller
         
         $logs = OrderLog::where('order_id', $id)
             ->latest('created_at')
-            ->get();
-            
-        return response()->json([
+            ->get();        return response()->json([
             'status' => 'success',
             'data' => [
                 'order' => [
