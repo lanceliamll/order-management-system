@@ -1,10 +1,15 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { LowStockCard } from '@/components/low-stock-card';
+import { OrderSummaryCard } from '@/components/order-summary-card';
+import { InventoryStatusCard } from '@/components/inventory-status-card';
 import { useLowStock } from '@/hooks/use-low-stock';
+import { useOrderSummary } from '@/hooks/use-order-summary';
+import { useInventoryStatus } from '@/hooks/use-inventory-status';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { useQueryClient } from '@tanstack/react-query';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -18,48 +23,90 @@ export default function Dashboard() {
     const THRESHOLD = 10;
     
     // Fetch low stock products using TanStack Query
-    const { products, summary, loading, isFetching, error } = useLowStock(THRESHOLD);
+    const { 
+        products, 
+        summary: lowStockSummary, 
+        loading: lowStockLoading, 
+        isFetching: lowStockFetching, 
+        error: lowStockError 
+    } = useLowStock(THRESHOLD);
+    
+    // Get the first and last day of the current month using date-fns
+    const today = new Date();
+    const firstDay = startOfMonth(today);
+    const lastDay = endOfMonth(today);
+    const firstDayOfMonth = format(firstDay, 'yyyy-MM-dd');
+    const lastDayOfMonth = format(lastDay, 'yyyy-MM-dd');
+    
+    // Fetch order summary data for the current month
+    const {
+        summary: orderSummary,
+        loading: orderSummaryLoading,
+        isFetching: orderSummaryFetching,
+        error: orderSummaryError
+    } = useOrderSummary({
+        fromDate: firstDayOfMonth,
+        toDate: lastDayOfMonth
+    });
+
+    // Fetch inventory status data
+    const {
+        inventoryStatus,
+        loading: inventoryStatusLoading,
+        isFetching: inventoryStatusFetching,
+        error: inventoryStatusError
+    } = useInventoryStatus();
 
     // Function to refresh low stock data
     const handleRefreshLowStock = () => {
         queryClient.invalidateQueries({ queryKey: ['lowStockProducts', THRESHOLD] });
+    };
+    
+    // Function to refresh order summary data
+    const handleRefreshOrderSummary = () => {
+        queryClient.invalidateQueries({ queryKey: ['orderSummary'] });
+    };
+    
+    // Function to refresh inventory status data
+    const handleRefreshInventoryStatus = () => {
+        queryClient.invalidateQueries({ queryKey: ['inventoryStatus'] });
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                </div>
                 
                 <div className="grid gap-4 md:grid-cols-2">
                     {/* Low Stock Products Card */}
                     <LowStockCard 
                         products={products}
-                        summary={summary}
-                        loading={loading}
-                        isFetching={isFetching}
-                        error={error}
+                        summary={lowStockSummary}
+                        loading={lowStockLoading}
+                        isFetching={lowStockFetching}
+                        error={lowStockError}
                         onRefresh={handleRefreshLowStock}
                     />
                     
-                    {/* Placeholder for another component */}
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 md:aspect-auto dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
+                    {/* Order Summary Card */}
+                    <OrderSummaryCard
+                        summary={orderSummary}
+                        loading={orderSummaryLoading}
+                        isFetching={orderSummaryFetching}
+                        error={orderSummaryError}
+                        onRefresh={handleRefreshOrderSummary}
+                    />
                 </div>
                 
-                <div className="relative min-h-[40vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+                {/* Inventory Status Overview */}
+                <div className="grid gap-4">
+                    <InventoryStatusCard
+                        inventoryStatus={inventoryStatus}
+                        loading={inventoryStatusLoading}
+                        isFetching={inventoryStatusFetching}
+                        error={inventoryStatusError}
+                        onRefresh={handleRefreshInventoryStatus}
+                    />
                 </div>
             </div>
         </AppLayout>
