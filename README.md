@@ -68,6 +68,38 @@ This application is designed for businesses that need to streamline their order 
    ```bash
    touch database/database.sqlite
    ```
+   
+### MySQL/XAMPP Setup (Alternative to SQLite)
+
+If you prefer to use MySQL (for production or local development with XAMPP):
+
+1. **Install XAMPP**
+   - Download and install XAMPP from [https://www.apachefriends.org/](https://www.apachefriends.org/).
+   - Start the MySQL service from the XAMPP control panel.
+
+2. **Create a MySQL database and user**
+   - Open phpMyAdmin (usually at [http://localhost/phpmyadmin](http://localhost/phpmyadmin)).
+   - Create a new database, e.g. `order_management`.
+   - (Optional) Create a new user and grant it all privileges on the new database, or use the default `root` user for local development.
+
+3. **Configure your `.env` file for MySQL**
+   - Update these lines in your `.env`:
+     ```
+     DB_CONNECTION=mysql
+     DB_HOST=127.0.0.1
+     DB_PORT=3306
+     DB_DATABASE=order_management
+     DB_USERNAME=root
+     DB_PASSWORD=   # (leave blank for default XAMPP root user)
+     ```
+
+4. **Run migrations and seeders**
+   ```bash
+   php artisan migrate
+   php artisan db:seed
+   ```
+
+You can now use MySQL via XAMPP for your local development database.
 
 5. **Run database migrations and seed data**
 
