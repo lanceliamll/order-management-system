@@ -6,6 +6,7 @@ import { AlertCircle, Package, RefreshCw, ArrowDown, ArrowUp, AlertTriangle, Sho
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface InventoryStatusCardProps {
   inventoryStatus: InventoryStatusSummary | null;
@@ -217,12 +218,9 @@ export function InventoryStatusCard({
                       </span>
                     </TableCell>
                     <TableCell>
-                      {activity.timestamp ? (
+                      {activity.updated_at ? (
                         <div>
-                          <div className="font-medium text-sm">{formatDate(activity.timestamp)}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(activity.timestamp).toLocaleDateString()}
-                          </div>
+                          <div className="font-medium text-sm">{formatDate(activity.updated_at)}</div>
                         </div>
                       ) : 'N/A'}
                     </TableCell>

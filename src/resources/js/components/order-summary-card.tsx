@@ -107,26 +107,30 @@ export function OrderSummaryCard({ summary, loading, isFetching = false, error, 
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1 rounded-lg border p-3">
+          <div className="flex flex-col gap-1 rounded-lg border bg-card shadow-sm p-3">
             <div className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <div className="bg-blue-50 text-blue-500 p-1.5 rounded-full">
+                <ShoppingBag className="h-3.5 w-3.5" />
+              </div>
               <span className="text-sm font-medium">Total Orders</span>
             </div>
-            <div className="text-2xl font-bold">{summary.total_orders.toLocaleString()}</div>
+            <div className="text-2xl font-bold mt-2">{summary.total_orders.toLocaleString()}</div>
           </div>
           
-          <div className="flex flex-col gap-1 rounded-lg border p-3">
+          <div className="flex flex-col gap-1 rounded-lg border bg-card shadow-sm p-3">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <div className="bg-green-50 text-green-500 p-1.5 rounded-full">
+                <TrendingUp className="h-3.5 w-3.5" />
+              </div>
               <span className="text-sm font-medium">Total Revenue</span>
             </div>
-            <div className="text-2xl font-bold">${summary.total_revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold mt-2">${summary.total_revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
           
           {/* Order Status Breakdown */}
-          <div className="col-span-2">
-            <h3 className="mb-2 text-sm font-medium">Orders by Status</h3>
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+          <div className="col-span-2 mt-2">
+            <h3 className="mb-3 text-sm font-medium">Orders by Status</h3>
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
               {summary.summary_by_status.map((status) => {
                 // Choose appropriate icon and color based on status
                 let Icon = Clock;
@@ -138,12 +142,12 @@ export function OrderSummaryCard({ summary, loading, isFetching = false, error, 
                     statusColor = "text-amber-500";
                     break;
                   case "confirmed":
-                    Icon = Package;
-                    statusColor = "text-blue-500";
+                    Icon = CheckCircle;
+                    statusColor = "text-emerald-500";
                     break;
                   case "delivered":
-                    Icon = CheckCircle;
-                    statusColor = "text-green-500";
+                    Icon = Package;
+                    statusColor = "text-blue-500";
                     break;
                   case "cancelled":
                     Icon = XCircle;
@@ -152,16 +156,27 @@ export function OrderSummaryCard({ summary, loading, isFetching = false, error, 
                 }
                 
                 return (
-                  <div key={status.status} className="flex flex-col gap-1 rounded-md border p-2">
-                    <div className="flex items-center justify-between">
+                  <div key={status.status} className="flex flex-col h-[100px] rounded-md border bg-card shadow-sm p-3">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Icon className={`h-4 w-4 ${statusColor}`} />
-                        <span className="text-sm capitalize">{status.status}</span>
+                        <div className={`rounded-full p-1.5 ${
+                          status.status.toLowerCase() === "confirmed" ? "bg-emerald-50 text-emerald-500" :
+                          status.status.toLowerCase() === "cancelled" ? "bg-rose-50 text-rose-500" :
+                          status.status.toLowerCase() === "pending" ? "bg-amber-50 text-amber-500" :
+                          "bg-blue-50 text-blue-500"
+                        }`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-xs capitalize font-medium">{status.status}</span>
                       </div>
-                      <span className="text-sm font-medium">{status.count}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      ${status.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <div className="mt-auto">
+                      <div className="text-xl font-bold">
+                        {status.count}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ${status.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -170,10 +185,10 @@ export function OrderSummaryCard({ summary, loading, isFetching = false, error, 
           </div>
         </div>
       </CardContent>
-      <CardFooter className="border-t px-6 py-3">
-        <div className="flex justify-between w-full text-sm">
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground">Avg. Value:</span>
+      <CardFooter className="border-t px-6 py-4">
+        <div className="flex flex-col sm:flex-row justify-between w-full gap-2 text-sm">
+          <div className="flex items-center gap-2 rounded-md border px-2.5 py-1.5">
+            <span className="text-blue-500/90">Avg. Order Value:</span>
             <span className="font-medium">
               ${(summary.total_revenue / summary.total_orders).toFixed(2)}
             </span>
@@ -181,9 +196,9 @@ export function OrderSummaryCard({ summary, loading, isFetching = false, error, 
           
           {/* Calculate percentages of different statuses */}
           {summary.summary_by_status.some(s => s.status.toLowerCase() === "cancelled") && (
-            <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">Cancellation Rate:</span>
-              <span className="font-medium text-destructive">
+            <div className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 rounded-md">
+              <span className="text-rose-500/90">Cancellation Rate:</span>
+              <span className="font-medium">
                 {((summary.summary_by_status.find(s => s.status.toLowerCase() === "cancelled")?.count || 0) / summary.total_orders * 100).toFixed(1)}%
               </span>
             </div>

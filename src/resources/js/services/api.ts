@@ -34,9 +34,10 @@ export interface InventoryActivity {
     sku?: string;
   }; // From actual API
   type: string;
-  quantity_change: number;
   timestamp: string;
+  quantity_change: number;
   notes?: string;
+  updated_at?: string; // New field for updated timestamp
 }
 
 export interface InventoryStatusSummary {
