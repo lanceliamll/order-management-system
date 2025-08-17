@@ -203,4 +203,6 @@ When the application is running, you can access the API documentation at:
 ## Future Enhancements
 
 - Wiring up the API on the Products Frontend
+- Product search, debounce + API search
+- Pagination
 
