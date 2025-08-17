@@ -120,6 +120,39 @@ This application is designed for businesses that need to streamline their order 
 
    For Laravel deployment instructions, refer to the [Laravel deployment documentation](https://laravel.com/docs/10.x/deployment).
 
+## API Documentation
+
+The Order Management System provides comprehensive API documentation to help developers integrate with the system:
+
+### API Documentation Files
+
+The following API documentation is available in the `src/resources/docs` directory:
+
+- **Products API**: Documentation for managing products and inventory
+  - `products-api.md` - Complete API reference
+  - `products-api-quickstart.md` - Quick start guide
+  - `products-api-postman-collection.json` - Postman collection for testing
+
+- **Orders API**: Documentation for managing customer orders
+  - `orders-api.md` - Complete API reference
+  - `orders-api-quickstart.md` - Quick start guide
+  - `orders-api-postman-collection.json` - Postman collection for testing
+
+- **Reports API**: Documentation for generating reports and analytics
+  - `reports-api.md` - Complete API reference
+  - `reports-api-quickstart.md` - Quick start guide
+  - `reports-api-postman-collection.json` - Postman collection for testing
+
+### Best Practices
+
+The `order-management-best-practices.md` file provides guidelines and best practices for working with the API efficiently.
+
+### Accessing API Documentation
+
+When the application is running, you can access the API documentation at:
+- `http://localhost:8000/docs/api` - Web-based API documentation
+- `http://localhost:8000/api/docs.json` - OpenAPI specification
+
 ## Features and Usage
 
 ### Product Management
