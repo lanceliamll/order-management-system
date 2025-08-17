@@ -1,6 +1,7 @@
 import AppHeaderLayout from '@/layouts/app/app-header-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ReactNode } from 'react';
+import ErrorBoundary from '@/components/error-boundary';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -8,7 +9,9 @@ interface AppLayoutProps {
 }
 
 export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => (
-    <AppHeaderLayout breadcrumbs={breadcrumbs} {...props}>
-        {children}
-    </AppHeaderLayout>
+    <ErrorBoundary>
+        <AppHeaderLayout breadcrumbs={breadcrumbs} {...props}>
+            {children}
+        </AppHeaderLayout>
+    </ErrorBoundary>
 );

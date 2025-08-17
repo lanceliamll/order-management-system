@@ -1,8 +1,8 @@
 import { type OrderSummary } from "@/hooks/use-order-summary";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Clock, Package, RefreshCw, ShoppingBag, TrendingUp, CheckCircle, XCircle } from "lucide-react";
+import { Clock, Package, RefreshCw, ShoppingBag, TrendingUp, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 
 interface OrderSummaryCardProps {
   summary: OrderSummary | null;
@@ -43,25 +43,14 @@ export function OrderSummaryCard({ summary, loading, isFetching = false, error, 
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Order Summary</CardTitle>
-            {onRefresh && (
-              <Button 
-                size="sm" 
-                variant={isFetching ? "ghost" : "outline"} 
-                onClick={onRefresh}
-                disabled={isFetching}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                {isFetching ? 'Retrying...' : 'Retry'}
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <ErrorState 
+            error={error} 
+            onRetry={onRefresh} 
+            isRetrying={isFetching}
+          />
         </CardContent>
       </Card>
     );

@@ -1,4 +1,14 @@
 // API request functions for products and inventory
+import { get } from './apiClient';
+import { handleApiErrorWithMockFallback } from './errorHandler';
+import { 
+  API_ENDPOINTS, 
+  API_PARAMS, 
+  DEFAULT_VALUES, 
+  STATUS_CODES,
+  ORDER_STATUS,
+  INVENTORY_ACTIVITY_TYPES
+} from '@/config/api.config';
 
 // Low Stock Products Types
 export interface LowStockProduct {
@@ -76,16 +86,36 @@ export interface OrderSummaryResponse {
 
 /**
  * Fetch products with stock levels below a specified threshold
- * @param threshold - Stock level threshold (default: 10)
+ * @param threshold - Stock level threshold (default: from config)
  */
-export async function fetchLowStockProducts(threshold: number = 10): Promise<LowStockResponse> {
-  const response = await fetch(`/products/inventory/low-stock?threshold=${threshold}`);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch low stock products: ${response.statusText}`);
+export async function fetchLowStockProducts(threshold: number = DEFAULT_VALUES.INVENTORY.LOW_STOCK_THRESHOLD): Promise<LowStockResponse> {
+  try {
+    return await get<LowStockResponse>(API_ENDPOINTS.PRODUCTS.LOW_STOCK, {
+      params: { [API_PARAMS.FILTERS.THRESHOLD]: threshold }
+    });
+  } catch (error) {
+    // Create mock data function
+    const getMockLowStockProducts = (): LowStockResponse => {
+      return {
+        success: true,
+        data: {
+          products: [],
+          summary: {
+            low_stock_count: 0,
+            out_of_stock_count: 0,
+            threshold_used: threshold,
+            total_value_at_risk: 0
+          }
+        }
+      };
+    };
+    
+    return handleApiErrorWithMockFallback(
+      () => Promise.reject(error), 
+      getMockLowStockProducts, 
+      'Low stock products API'
+    );
   }
-  
-  return response.json();
 }
 
 /**
@@ -94,27 +124,22 @@ export async function fetchLowStockProducts(threshold: number = 10): Promise<Low
  * @param toDate - Optional end date (YYYY-MM-DD)
  */
 export async function fetchOrderSummary(fromDate?: string, toDate?: string): Promise<OrderSummaryResponse> {
-  // Build the query parameters if dates are provided
-  const params = new URLSearchParams();
-  if (fromDate) params.append('from_date', fromDate);
-  if (toDate) params.append('to_date', toDate);
-
-  const queryString = params.toString() ? `?${params.toString()}` : '';
-  const response = await fetch(`/api/reports/orders/summary${queryString}`);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch order summary: ${response.statusText}`);
+  try {
+    // Use our new API client with params object
+    return await get<OrderSummaryResponse>(API_ENDPOINTS.REPORTS.ORDER_SUMMARY, {
+      params: {
+        [API_PARAMS.DATE_RANGE.FROM]: fromDate,
+        [API_PARAMS.DATE_RANGE.TO]: toDate
+      }
+    });
+  } catch (error) {
+    // Use our error handler with mock fallback
+    return handleApiErrorWithMockFallback(
+      () => Promise.reject(error), 
+      getMockOrderSummary, 
+      'Order summary API'
+    );
   }
-  
-  const data = await response.json();
-  
-  // For now, if the API isn't implemented yet, fallback to mock data
-  if (response.status === 404) {
-    console.warn('Order summary API endpoint not found. Using mock data.');
-    return getMockOrderSummary();
-  }
-  
-  return data;
 }
 
 /**
@@ -122,26 +147,26 @@ export async function fetchOrderSummary(fromDate?: string, toDate?: string): Pro
  */
 function getMockOrderSummary(): OrderSummaryResponse {
   return {
-    status: "success",
+    status: STATUS_CODES.SUCCESS,
     data: {
       summary_by_status: [
         {
-          status: "pending",
+          status: ORDER_STATUS.PENDING,
           count: 38,
           total_amount: 3800.50
         },
         {
-          status: "confirmed",
+          status: ORDER_STATUS.CONFIRMED,
           count: 153,
           total_amount: 15342.75
         },
         {
-          status: "delivered",
+          status: ORDER_STATUS.DELIVERED,
           count: 1051,
           total_amount: 105124.30
         },
         {
-          status: "cancelled",
+          status: ORDER_STATUS.CANCELLED,
           count: 45,
           total_amount: 4478.40
         }
@@ -157,21 +182,15 @@ function getMockOrderSummary(): OrderSummaryResponse {
  * Fetch inventory status from the API
  */
 export async function fetchInventoryStatus(): Promise<InventoryStatusResponse> {
-  const response = await fetch('/api/reports/inventory/status');
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch inventory status: ${response.statusText}`);
+  try {
+    return await get<InventoryStatusResponse>(API_ENDPOINTS.REPORTS.INVENTORY_STATUS);
+  } catch (error) {
+    return handleApiErrorWithMockFallback(
+      () => Promise.reject(error),
+      getMockInventoryStatus,
+      'Inventory status API'
+    );
   }
-  
-  const data = await response.json();
-  
-  // For now, if the API isn't implemented yet, fallback to mock data
-  if (response.status === 404) {
-    console.warn('Inventory status API endpoint not found. Using mock data.');
-    return getMockInventoryStatus();
-  }
-  
-  return data;
 }
 
 /**
@@ -179,13 +198,13 @@ export async function fetchInventoryStatus(): Promise<InventoryStatusResponse> {
  */
 function getMockInventoryStatus(): InventoryStatusResponse {
   return {
-    status: "success",
+    status: STATUS_CODES.SUCCESS,
     data: {
       total_products: 450,
       total_inventory_value: 185250.00,
       low_stock_count: 18,
       out_of_stock_count: 7,
-      low_stock_threshold: 10,
+      low_stock_threshold: DEFAULT_VALUES.INVENTORY.LOW_STOCK_THRESHOLD,
       low_stock_products: [
         {
           id: 1,
@@ -217,7 +236,7 @@ function getMockInventoryStatus(): InventoryStatusResponse {
             name: "Bluetooth Speaker",
             sku: "SPKR-001"
           },
-          type: "stock_in",
+          type: INVENTORY_ACTIVITY_TYPES.STOCK_IN,
           quantity_change: 25,
           timestamp: "2025-08-16T14:30:00.000Z",
           notes: "Regular stock replenishment"
@@ -229,7 +248,7 @@ function getMockInventoryStatus(): InventoryStatusResponse {
             name: "Premium Headphones",
             sku: "HDPH-001"
           },
-          type: "stock_out",
+          type: INVENTORY_ACTIVITY_TYPES.STOCK_OUT,
           quantity_change: -5,
           timestamp: "2025-08-16T10:15:00.000Z",
           notes: "Order #12345"

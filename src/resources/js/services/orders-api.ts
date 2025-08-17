@@ -1,4 +1,7 @@
 // API request functions for order management
+import { get, post, put } from './apiClient';
+import { handleApiErrorWithMockFallback } from './errorHandler';
+import { API_ENDPOINTS, ORDER_STATUS, STATUS_CODES } from '@/config/api.config';
 
 // Order Types
 export interface OrderItem {
@@ -16,7 +19,7 @@ export interface OrderItem {
 export interface Order {
   id: number;
   order_number: string; // format: ORD-YYYYMMDD-XXXXXX
-  status: 'pending' | 'confirmed' | 'cancelled' | 'partially_cancelled';
+  status: typeof ORDER_STATUS[keyof typeof ORDER_STATUS];
   total_amount: number;
   created_at: string;
   updated_at: string;
@@ -60,24 +63,13 @@ export interface OrderResponse {
  */
 export async function fetchOrders(): Promise<OrdersResponse> {
   try {
-    const response = await fetch('/api/orders');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch orders: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    // For now, if the API isn't implemented yet, fallback to mock data
-    if (response.status === 404) {
-      console.warn('Orders API endpoint not found. Using mock data.');
-      return getMockOrders();
-    }
-    
-    return data;
+    return await get<OrdersResponse>(API_ENDPOINTS.ORDERS.BASE);
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    return getMockOrders();
+    return handleApiErrorWithMockFallback(
+      () => Promise.reject(error),
+      getMockOrders,
+      'Orders API'
+    );
   }
 }
 
@@ -87,24 +79,13 @@ export async function fetchOrders(): Promise<OrdersResponse> {
  */
 export async function fetchOrderById(id: number): Promise<OrderResponse> {
   try {
-    const response = await fetch(`/api/orders/${id}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    // For now, if the API isn't implemented yet, fallback to mock data
-    if (response.status === 404) {
-      console.warn('Order API endpoint not found. Using mock data.');
-      return getMockOrderById(id);
-    }
-    
-    return data;
+    return await get<OrderResponse>(API_ENDPOINTS.ORDERS.DETAIL(id));
   } catch (error) {
-    console.error(`Error fetching order #${id}:`, error);
-    return getMockOrderById(id);
+    return handleApiErrorWithMockFallback(
+      () => Promise.reject(error),
+      () => getMockOrderById(id),
+      'Order API'
+    );
   }
 }
 
@@ -114,21 +95,9 @@ export async function fetchOrderById(id: number): Promise<OrderResponse> {
  */
 export async function createOrder(orderData: CreateOrderRequest): Promise<OrderResponse> {
   try {
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(orderData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to create order: ${response.statusText}`);
-    }
-    
-    return await response.json();
+    return await post<OrderResponse>(API_ENDPOINTS.ORDERS.BASE, orderData);
   } catch (error) {
+    // We don't use mock fallback here since creating an order should fail properly
     console.error('Error creating order:', error);
     throw error;
   }
@@ -140,19 +109,7 @@ export async function createOrder(orderData: CreateOrderRequest): Promise<OrderR
  */
 export async function confirmOrder(id: number): Promise<OrderResponse> {
   try {
-    const response = await fetch(`/api/orders/${id}/confirm`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to confirm order: ${response.statusText}`);
-    }
-    
-    return await response.json();
+    return await put<OrderResponse>(API_ENDPOINTS.ORDERS.CONFIRM(id));
   } catch (error) {
     console.error(`Error confirming order #${id}:`, error);
     throw error;
@@ -165,19 +122,7 @@ export async function confirmOrder(id: number): Promise<OrderResponse> {
  */
 export async function cancelOrder(id: number): Promise<OrderResponse> {
   try {
-    const response = await fetch(`/api/orders/${id}/cancel`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to cancel order: ${response.statusText}`);
-    }
-    
-    return await response.json();
+    return await put<OrderResponse>(API_ENDPOINTS.ORDERS.CANCEL(id));
   } catch (error) {
     console.error(`Error cancelling order #${id}:`, error);
     throw error;
@@ -191,20 +136,7 @@ export async function cancelOrder(id: number): Promise<OrderResponse> {
  */
 export async function cancelOrderItems(id: number, items: CancelOrderItemsRequest): Promise<OrderResponse> {
   try {
-    const response = await fetch(`/api/orders/${id}/cancel-items`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(items)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to cancel items: ${response.statusText}`);
-    }
-    
-    return await response.json();
+    return await put<OrderResponse>(API_ENDPOINTS.ORDERS.CANCEL_ITEMS(id), items);
   } catch (error) {
     console.error(`Error cancelling items in order #${id}:`, error);
     throw error;
@@ -216,13 +148,13 @@ export async function cancelOrderItems(id: number, items: CancelOrderItemsReques
  */
 function getMockOrders(): OrdersResponse {
   return {
-    status: "success",
+    status: STATUS_CODES.SUCCESS,
     message: "Orders retrieved successfully",
     data: [
       {
         id: 1,
         order_number: "ORD-20250815-000001",
-        status: "confirmed",
+        status: ORDER_STATUS.CONFIRMED,
         total_amount: 259.98,
         created_at: "2025-08-15T09:30:00.000Z",
         updated_at: "2025-08-15T09:35:00.000Z",
@@ -242,7 +174,7 @@ function getMockOrders(): OrdersResponse {
       {
         id: 2,
         order_number: "ORD-20250816-000002",
-        status: "pending",
+        status: ORDER_STATUS.PENDING,
         total_amount: 89.99,
         created_at: "2025-08-16T14:45:00.000Z",
         updated_at: "2025-08-16T14:45:00.000Z",
