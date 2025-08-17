@@ -39,7 +39,13 @@ const handleSystemThemeChange = () => {
 };
 
 export function initializeTheme() {
+    // Set default theme to light
     const savedAppearance = (localStorage.getItem('appearance') as Appearance) || 'system';
+    
+    // Save the appearance to localStorage if not already set
+    if (!localStorage.getItem('appearance')) {
+        localStorage.setItem('appearance', 'system');
+    }
 
     applyTheme(savedAppearance);
 

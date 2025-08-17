@@ -57,7 +57,7 @@ const defaultOptions: Partial<ApiRequestOptions> = {
  * @throws ApiError if the request fails
  */
 export async function apiRequest<T>(
-  endpoint: string, 
+x``  endpoint: string, 
   options: ApiRequestOptions = {}
 ): Promise<T> {
   const { 

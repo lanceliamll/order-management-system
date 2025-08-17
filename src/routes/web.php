@@ -15,15 +15,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('orders', function () {
         return Inertia::render('orders');
     })->name('orders');
+    
+    Route::get('products', function () {
+        return Inertia::render('products');
+    })->name('products');
 });
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 
-// Direct product routes for testing (without API prefix)
+// API product routes (moved to api.php)
 use App\Http\Controllers\Api\ProductController;
 
-Route::prefix('products')->group(function () {
+Route::prefix('api/products')->group(function () {
         // Inventory specific endpoints - these need to come BEFORE the dynamic routes
         Route::get('inventory/all', [ProductController::class, 'inventory']);
         Route::get('inventory/low-stock', [ProductController::class, 'lowStock']);
